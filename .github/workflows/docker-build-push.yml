@@ -3,7 +3,7 @@ name: Docker Build and Push
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, cinema ]
     paths:
       - 'src/**'
       - '.github/workflows/docker-build-push.yml'
@@ -38,6 +38,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Monolith
       - name: Extract metadata (tags, labels) for Monolith
         id: meta-monolith
         uses: docker/metadata-action@v4
@@ -60,6 +61,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Movies Service
       - name: Extract metadata (tags, labels) for Movies Service
         id: meta-movies
         uses: docker/metadata-action@v4
@@ -82,4 +84,135 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      
+      # Proxy Service
+      - name: Extract metadata (tags, labels) for Proxy Service
+        id: meta-proxy
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.PROXY_SERVICE_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+            type=ref,event=branch
+            latest
+
+      - name: Build and push Proxy Service Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/microservices/proxy
+          push: true
+          tags: ${{ steps.meta-proxy.outputs.tags }}
+          labels: ${{ steps.meta-proxy.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Events Service
+      - name: Extract metadata (tags, labels) for Events Service
+        id: meta-events
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.EVENTS_SERVICE_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+            type=ref,event=branch
+            latest
+
+      - name: Build and push Events Service Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./src/microservices/events
+          push: true
+          tags: ${{ steps.meta-events.outputs.tags }}
+          labels: ${{ steps.meta-events.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  api-tests:
+    name: Run API Tests
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Compose
+        run: |
+          docker compose --version
+
+      - name: Start services with Docker Compose
+        run: |
+          docker compose up -d
+          echo "Waiting for PostgreSQL and Kafka..."
+          sleep 30
+
+      - name: Check services health
+        run: |
+          echo "=== Checking running services ==="
+          docker compose ps
+          echo ""
+          echo "=== Testing connectivity to services ==="
+          timeout 5 bash -c 'until curl -f http://localhost:8080/health 2>/dev/null; do echo "Waiting for Monolith..."; sleep 2; done' || echo "❌ Monolith not responding on :8080"
+          timeout 5 bash -c 'until curl -f http://localhost:8081/health 2>/dev/null; do echo "Waiting for Movies..."; sleep 2; done' || echo "❌ Movies service not responding on :8081"
+          timeout 5 bash -c 'until curl -f http://localhost:8082/actuator/health 2>/dev/null; do echo "Waiting for Events..."; sleep 2; done' || echo "✅ Events service responding on :8082"
+          timeout 5 bash -c 'until curl -f http://localhost:8000/actuator/health 2>/dev/null; do echo "Waiting for Proxy..."; sleep 2; done' || echo "✅ Proxy service responding on :8000"
+          echo ""
+          echo "=== Monolith logs ==="
+          docker compose logs monolith --tail=50
+          echo ""
+          echo "=== Movies Service logs ==="
+          docker compose logs movies-service --tail=50
+          echo ""
+          echo "=== Events Service logs ==="
+          docker compose logs events-service --tail=30
+          echo ""
+          echo "=== Proxy Service logs ==="
+          docker compose logs proxy-service --tail=30
+          echo ""
+          echo "Waiting additional time for all services to stabilize..."
+          sleep 60
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Newman and dependencies
+        working-directory: tests/postman
+        run: |
+          npm install
+
+      - name: Run API tests
+        working-directory: tests/postman
+        run: |
+          npm run test:ci
+        continue-on-error: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/postman/reports/
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "=== Proxy Service Logs ==="
+          docker logs cinemaabyss-proxy-service --tail=100
+          echo ""
+          echo "=== Movies Service Logs ==="
+          docker logs cinemaabyss-movies-service --tail=100
+          echo ""
+          echo "=== Events Service Logs ==="
+          docker logs cinemaabyss-events-service --tail=100
+          echo ""
+          echo "=== Monolith Logs ==="
+          docker logs cinemaabyss-monolith --tail=100
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v

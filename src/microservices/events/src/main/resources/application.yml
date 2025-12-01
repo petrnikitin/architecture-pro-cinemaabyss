@@ -1,0 +1,41 @@
+server:
+  port: ${PORT:8082}
+
+spring:
+  application:
+    name: events-service
+
+  # Kafka конфигурация
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    consumer:
+      group-id: cinemaabyss-events-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+    listener:
+      ack-mode: manual
+
+# Логирование
+logging:
+  level:
+    com.cinemaabyss.events: INFO
+    org.springframework.kafka: INFO
+    org.apache.kafka: WARN
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

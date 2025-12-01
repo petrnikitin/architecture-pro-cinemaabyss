@@ -4,8 +4,9 @@
 
 1. Спроектируйте to be архитектуру КиноБездны, разделив всю систему на отдельные домены и организовав интеграционное взаимодействие и единую точку вызова сервисов.
 Результат представьте в виде контейнерной диаграммы в нотации С4.
-Добавьте ссылку на файл в этот шаблон
-[ссылка на файл](ссылка)
+Добавьте ссылку на файл в этот шаблон.
+
+[C4 Container Diagram - To-Be Architecture](architecture-diagrams/to-be-container-diagram.puml)
 
 
 ## Задание 2
@@ -57,7 +58,11 @@
     - Добавьте в docker-compose новый сервис, kafka там уже есть
 
 Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
-Приложите скриншот тестов и скриншот состояния топиков Kafka http://localhost:8090 
+Приложите скриншот тестов и скриншот состояния топиков Kafka http://localhost:8090
+
+[Task №2 kafka condition screenshot](architecture-diagrams/screenshots/task2_kafka_topic_condition.png)
+
+[Task №2 postman test results](architecture-diagrams/screenshots/task2_test_result.png)
 
 
 ## Задание 3
@@ -109,6 +114,8 @@ jobs:
 ```
 Как только сборка отработает и в github registry появятся ваши образы, можно переходить к блоку настройки Kubernetes
 Успешным результатом данного шага является "зеленая" сборка и "зеленые" тесты
+
+[Task №3 Настройка CI/CD](architecture-diagrams/screenshots/task3_1_ci_cd.png)
 
 
 ### Proxy в Kubernetes
@@ -272,7 +279,11 @@ cat .docker/config.json | base64
   Откройте логи event-service и сделайте скриншот обработки событий
 
 #### Шаг 3
-Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
+Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и скриншот вывода event-service после вызова тестов.
+
+[Task №3 URL Result - API Movies Response](architecture-diagrams/screenshots/task_3_url_result.png)
+
+[Task №3 Logs Result - Events Service Processing](architecture-diagrams/screenshots/task_3_log_result.png)
 
 
 ## Задание 4
@@ -345,9 +356,13 @@ kubectl get pods -n cinemaabyss
 minikube tunnel
 ```
 
-Потом вызовите 
+Потом вызовите
 https://cinemaabyss.example.com/api/movies
 и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
+
+[Task №4 Helm Installation](architecture-diagrams/screenshots/task4_helm_install.png)
+
+[Task №4 URL Result - API Movies Response](architecture-diagrams/screenshots/task4_url_result.png)
 
 
 # Задание 5
@@ -414,6 +429,10 @@ You can see 21 for the upstream_rq_pending_overflow value which means 21 calls s
 ```
 
 Приложите скриншот работы circuit breaker'а
+
+[Task №5 Circuit Breaker Test Results - Fortio Load Test](architecture-diagrams/screenshots/task5_circuit_breaker_result_1.png)
+
+[Task №5 Circuit Breaker Statistics - Istio Metrics](architecture-diagrams/screenshots/task5_circuit_breaker_result_2.png)
 
 Удаляем все
 ```bash
