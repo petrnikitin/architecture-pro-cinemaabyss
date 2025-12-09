@@ -1,0 +1,97 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Container Diagram - Система "Кинобездна" (To-Be Architecture)
+
+Person(user, "Пользователь", "Ноутбуки, смарт ТВ, мобильные устройства")
+
+System_Boundary(cinemaabyss, "Кинобездна") {
+    Container(proxy, "API Gateway / Proxy Service", "Go, HTTP/REST", "Единая точка входа. Маршрутизация запросов. Реализация паттерна Strangler Fig с feature flags для постепенной миграции трафика")
+
+    Container(auth_service, "Auth Service", "Go, HTTP/REST", "Аутентификация и авторизация пользователей. Управление токенами JWT")
+
+    Container(user_service, "User Service", "Go, HTTP/REST", "Управление профилями пользователей, избранное, история просмотров")
+
+    Container(movies_service, "Movies Service", "Go, HTTP/REST", "Метаданные о фильмах: жанры, актёры, оценки, описания, поиск и фильтрация")
+
+    Container(content_service, "Content Service", "Go, HTTP/REST", "Управление видеоконтентом, стриминг, интеграция с CDN")
+
+    Container(subscription_service, "Subscription Service", "Go, HTTP/REST", "Управление подписками и тарифными планами")
+
+    Container(payment_service, "Payment Service", "Go, HTTP/REST", "Обработка платежей и транзакций")
+
+    Container(discount_service, "Discount Service", "Go, HTTP/REST", "Управление скидками, промокодами и спецпредложениями")
+
+    Container(events_service, "Events Service", "Go, Kafka Consumer/Producer", "Обработка асинхронных событий, Event Sourcing")
+
+    Container(monolith, "Monolith (Legacy)", "Go, HTTP/REST", "Унаследованная монолитная система. Постепенно выводится из эксплуатации")
+
+    ContainerDb(user_db, "User Database", "PostgreSQL", "Хранит данные пользователей, профили, настройки")
+
+    ContainerDb(movies_db, "Movies Database", "PostgreSQL", "Хранит метаданные фильмов, жанры, актёров, рейтинги")
+
+    ContainerDb(content_db, "Content Database", "PostgreSQL", "Хранит информацию о видеоконтенте и метаданные стриминга")
+
+    ContainerDb(subscription_db, "Subscription Database", "PostgreSQL", "Хранит данные о подписках и тарифах")
+
+    ContainerDb(payment_db, "Payment Database", "PostgreSQL", "Хранит историю платежей и транзакций")
+
+    ContainerDb(monolith_db, "Monolith Database", "PostgreSQL", "База данных монолита. Постепенно мигрируется")
+
+    Container(kafka, "Message Broker", "Apache Kafka", "Асинхронная обработка событий между сервисами")
+
+    Container(cache, "Cache", "Redis", "Кеширование часто запрашиваемых данных для повышения производительности")
+
+    Container(storage, "Object Storage", "S3/MinIO", "Хранилище видеофайлов и статического контента")
+}
+
+System_Ext(recommendation, "Recommendation System", "Внешняя рекомендательная система на базе RabbitMQ. Персонализированные рекомендации фильмов")
+
+System_Ext(payment_gateway, "Payment Gateway", "Внешние платёжные системы (Stripe, PayPal и т.д.)")
+
+System_Ext(loyalty, "Loyalty Services", "Сервисы лояльности партнёров")
+
+System_Ext(marketplace, "Marketplaces", "Интеграция с маркетплейсами")
+
+Rel(user, proxy, "Использует", "HTTPS/JSON")
+
+Rel(proxy, auth_service, "Аутентифицирует пользователей", "REST/HTTPS")
+Rel(proxy, user_service, "Получает профиль, избранное", "REST/HTTPS")
+Rel(proxy, movies_service, "Получает метаданные фильмов", "REST/HTTPS")
+Rel(proxy, content_service, "Стримит контент", "REST/HTTPS")
+Rel(proxy, subscription_service, "Управляет подписками", "REST/HTTPS")
+Rel(proxy, payment_service, "Обрабатывает платежи", "REST/HTTPS")
+Rel(proxy, discount_service, "Применяет скидки", "REST/HTTPS")
+Rel(proxy, events_service, "Создаёт события", "REST/HTTPS")
+Rel(proxy, monolith, "Маршрутизирует запросы (legacy)", "REST/HTTPS")
+
+Rel(auth_service, user_db, "Читает/пишет данные аутентификации", "SQL/TCP")
+Rel(user_service, user_db, "Читает/пишет профили пользователей", "SQL/TCP")
+Rel(movies_service, movies_db, "Читает/пишет метаданные", "SQL/TCP")
+Rel(content_service, content_db, "Читает/пишет данные контента", "SQL/TCP")
+Rel(subscription_service, subscription_db, "Читает/пишет подписки", "SQL/TCP")
+Rel(payment_service, payment_db, "Читает/пишет платежи", "SQL/TCP")
+Rel(monolith, monolith_db, "Читает/пишет данные", "SQL/TCP")
+
+Rel(content_service, storage, "Читает/пишет видеофайлы", "S3 API")
+
+Rel(user_service, kafka, "Публикует события пользователей", "Kafka Protocol")
+Rel(movies_service, kafka, "Публикует события фильмов", "Kafka Protocol")
+Rel(payment_service, kafka, "Публикует события платежей", "Kafka Protocol")
+Rel(subscription_service, kafka, "Публикует события подписок", "Kafka Protocol")
+Rel(events_service, kafka, "Читает и обрабатывает события", "Kafka Protocol")
+
+Rel(movies_service, cache, "Кеширует метаданные", "Redis Protocol")
+Rel(content_service, cache, "Кеширует данные контента", "Redis Protocol")
+Rel(user_service, cache, "Кеширует профили", "Redis Protocol")
+
+Rel(user_service, recommendation, "Получает рекомендации", "AMQP/RabbitMQ")
+Rel(movies_service, recommendation, "Отправляет данные о просмотрах", "AMQP/RabbitMQ")
+
+Rel(payment_service, payment_gateway, "Обрабатывает платежи", "REST/HTTPS")
+Rel(subscription_service, loyalty, "Интегрируется с программами лояльности", "REST/HTTPS")
+Rel(discount_service, marketplace, "Синхронизирует скидки", "REST/HTTPS")
+
+@enduml

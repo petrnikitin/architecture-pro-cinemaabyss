@@ -71,17 +71,26 @@ func initDB() {
 	if connStr == "" {
 		connStr = "postgres://postgres:postgres@localhost/cinemaabyss?sslmode=disable"
 	}
+
 	var err error
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
+	// Retry database connection up to 30 times (30 seconds)
+	maxRetries := 30
+	for i := 0; i < maxRetries; i++ {
+		err = db.Ping()
+		if err == nil {
+			log.Println("Successfully connected to database")
+			return
+		}
+		log.Printf("Waiting for database... (attempt %d/%d): %v", i+1, maxRetries, err)
+		time.Sleep(1 * time.Second)
 	}
-	log.Println("Successfully connected to database")
+
+	log.Fatalf("Failed to connect to database after %d attempts: %v", maxRetries, err)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
