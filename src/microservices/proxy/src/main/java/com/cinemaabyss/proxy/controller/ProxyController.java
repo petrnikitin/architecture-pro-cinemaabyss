@@ -27,7 +27,7 @@ public class ProxyController {
 
     @RequestMapping(value = "/api/movies/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
     public ResponseEntity<String> proxyMovies(HttpServletRequest request) throws IOException {
-        String path = request.getRequestURI();
+        String path = buildFullPath(request);
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
         String body = getRequestBody(request);
         HttpHeaders headers = getRequestHeaders(request);
@@ -39,7 +39,7 @@ public class ProxyController {
 
     @RequestMapping(value = "/api/users/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
     public ResponseEntity<String> proxyUsers(HttpServletRequest request) throws IOException {
-        String path = request.getRequestURI();
+        String path = buildFullPath(request);
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
         String body = getRequestBody(request);
         HttpHeaders headers = getRequestHeaders(request);
@@ -51,7 +51,7 @@ public class ProxyController {
 
     @RequestMapping(value = "/api/payments/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
     public ResponseEntity<String> proxyPayments(HttpServletRequest request) throws IOException {
-        String path = request.getRequestURI();
+        String path = buildFullPath(request);
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
         String body = getRequestBody(request);
         HttpHeaders headers = getRequestHeaders(request);
@@ -63,7 +63,7 @@ public class ProxyController {
 
     @RequestMapping(value = "/api/subscriptions/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
     public ResponseEntity<String> proxySubscriptions(HttpServletRequest request) throws IOException {
-        String path = request.getRequestURI();
+        String path = buildFullPath(request);
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
         String body = getRequestBody(request);
         HttpHeaders headers = getRequestHeaders(request);
@@ -75,7 +75,7 @@ public class ProxyController {
 
     @RequestMapping(value = "/api/events/**", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
     public ResponseEntity<String> proxyEvents(HttpServletRequest request) throws IOException {
-        String path = request.getRequestURI();
+        String path = buildFullPath(request);
         HttpMethod method = HttpMethod.valueOf(request.getMethod());
         String body = getRequestBody(request);
         HttpHeaders headers = getRequestHeaders(request);
@@ -83,6 +83,17 @@ public class ProxyController {
         log.info("Proxying events request: {} {}", method, path);
 
         return proxyService.routeToEvents(path, method, body, headers);
+    }
+
+    private String buildFullPath(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        String queryString = request.getQueryString();
+        
+        if (queryString != null && !queryString.isEmpty()) {
+            return path + "?" + queryString;
+        }
+        
+        return path;
     }
 
     private String getRequestBody(HttpServletRequest request) throws IOException {
